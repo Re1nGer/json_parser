@@ -42,10 +42,12 @@ func NewLexer(rd *bufio.Reader) *Lexer {
 }
 
 // let's just assume it's an array of bytes
-func (r *Lexer) Tokenize(rd bufio.Reader) ([]Token, error) {
+func (r *Lexer) Tokenize() ([]Token, error) {
 	var cur byte
 
 	var err error
+
+	rd := r.Reader
 
 	for err == nil {
 		cur, err = rd.ReadByte()
@@ -68,21 +70,30 @@ func (r *Lexer) Tokenize(rd bufio.Reader) ([]Token, error) {
 		case ']':
 			r.Tokens = append(r.Tokens, Token{TokenType: RIGHT_BRACKET, Value: "]"})
 		case 'f':
-			t, err := r.tokenizeBool(&rd)
+			rd.UnreadByte()
+			t, err := r.tokenizeBool(rd)
 			if err != nil {
 				return nil, err
 			}
 			r.Tokens = append(r.Tokens, *t)
 		case 't':
-			t, err := r.tokenizeBool(&rd)
+			rd.UnreadByte()
+			t, err := r.tokenizeBool(rd)
 			if err != nil {
 				return nil, err
 			}
 			r.Tokens = append(r.Tokens, *t)
 
+		case 'n':
+			rd.UnreadByte()
+			t, err := r.tokenizeNull(rd)
+			if err != nil {
+				return nil, err
+			}
+			r.Tokens = append(r.Tokens, *t)
 		case '"':
 			//handle string
-			t, err := r.tokenizeString(&rd)
+			t, err := r.tokenizeString(rd)
 			if err != nil {
 				return nil, err
 			}
@@ -90,8 +101,13 @@ func (r *Lexer) Tokenize(rd bufio.Reader) ([]Token, error) {
 
 		case ':':
 			r.Tokens = append(r.Tokens, Token{TokenType: COLON, Value: ":"})
+		case ',':
+			r.Tokens = append(r.Tokens, Token{TokenType: COMMA, Value: ","})
+		case ' ': //empty space skip
+			continue
 		default:
-
+			//erronous state
+			return nil, fmt.Errorf("incorrect json structure")
 		}
 	}
 
@@ -100,15 +116,18 @@ func (r *Lexer) Tokenize(rd bufio.Reader) ([]Token, error) {
 
 func (r *Lexer) tokenizeBool(rd *bufio.Reader) (*Token, error) {
 	//look further 5 bytes false
-	n, err := rd.Peek(4)
+	n, err := rd.Peek(5)
 	if err != nil {
 		return nil, err
 	}
-	ok := bytes.Equal(n, []byte("alse"))
+	ok := bytes.Equal(n, []byte("false"))
 	if !ok {
-		n, err = rd.Peek(3)
+		n, err = rd.Peek(4)
+		if err != nil {
+			return nil, err
+		}
 	}
-	ok1 := bytes.Equal(n, []byte("rue"))
+	ok1 := bytes.Equal(n, []byte("true"))
 	if !ok && !ok1 {
 		return nil, fmt.Errorf("error parsing bool")
 	}
@@ -122,9 +141,9 @@ func (r *Lexer) tokenizeBool(rd *bufio.Reader) (*Token, error) {
 	}
 
 	if ok {
-		rd.Discard(4)
+		rd.Discard(5)
 	} else {
-		rd.Discard(3)
+		rd.Discard(4)
 	}
 
 	return re, nil
@@ -166,18 +185,21 @@ func (r *Lexer) tokenizeString(rd *bufio.Reader) (*Token, error) {
 	return t, nil
 }
 
-func tokenizeArray() Token {
-	return Token{}
-}
-
-func tokenizeObj() Token {
-	return Token{}
-}
-
 func tokenizeNumber() Token {
 	return Token{}
 }
 
-func tokenizeNull() Token {
-	return Token{}
+func (r *Lexer) tokenizeNull(rd *bufio.Reader) (*Token, error) {
+	n, err := rd.Peek(4)
+	if err != nil {
+		return nil, err
+	}
+	ok := bytes.Equal(n, []byte("null"))
+	if !ok {
+		return nil, fmt.Errorf("error parsing null")
+	}
+
+	rd.Discard(4)
+
+	return &Token{TokenType: NULL, Value: "null"}, nil
 }

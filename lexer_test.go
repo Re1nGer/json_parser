@@ -11,7 +11,7 @@ func TestSimpleJson(t *testing.T) {
 
 	rd := bufio.NewReader(bytes.NewReader(sample))
 
-	p, err := NewLexer(rd).Tokenize(*rd)
+	p, err := NewLexer(rd).Tokenize()
 	if err != nil {
 		t.Errorf("error parsing %v", err)
 	}
@@ -24,7 +24,59 @@ func TestBoolJson(t *testing.T) {
 
 	rd := bufio.NewReader(bytes.NewReader(sample))
 
-	p, err := NewLexer(rd).Tokenize(*rd)
+	p, err := NewLexer(rd).Tokenize()
+	if err != nil {
+		t.Errorf("error parsing %v", err)
+	}
+
+	t.Log(p)
+}
+
+func TestJohnSimpleTest(t *testing.T) {
+	sample := []byte("{\"key\": \"value\", \"key2\": \"value\"}")
+
+	rd := bufio.NewReader(bytes.NewReader(sample))
+
+	p, err := NewLexer(rd).Tokenize()
+	if err != nil {
+		t.Errorf("error parsing %v", err)
+	}
+
+	t.Log(p)
+}
+
+func TestJohnErrorTest(t *testing.T) {
+	sample := []byte("{\"key\": \"value\", key2: \"value\" } ")
+
+	rd := bufio.NewReader(bytes.NewReader(sample))
+
+	p, err := NewLexer(rd).Tokenize()
+	if err != nil {
+		t.Errorf("error parsing %v", err)
+	}
+
+	t.Log(p)
+}
+
+func TestJohnTest2(t *testing.T) {
+	sample := []byte("{\"key1\": true, \"key2\": false, \"key3\": null, \"key4\": \"value\"}")
+
+	rd := bufio.NewReader(bytes.NewReader(sample))
+
+	p, err := NewLexer(rd).Tokenize()
+	if err != nil {
+		t.Errorf("error parsing %v", err)
+	}
+
+	t.Log(p)
+}
+
+func TestJohnTest3(t *testing.T) {
+	sample := []byte("{\"key\": \"value\", \"key-o\": {}, \"key-l\": [] } ")
+
+	rd := bufio.NewReader(bytes.NewReader(sample))
+
+	p, err := NewLexer(rd).Tokenize()
 	if err != nil {
 		t.Errorf("error parsing %v", err)
 	}
@@ -37,7 +89,7 @@ func TestSimpleErrorJson(t *testing.T) {
 
 	rd := bufio.NewReader(bytes.NewReader(sample))
 
-	p, err := NewLexer(rd).Tokenize(*rd)
+	p, err := NewLexer(rd).Tokenize()
 	if err == nil {
 		t.Error("error didn't trigger")
 	}
