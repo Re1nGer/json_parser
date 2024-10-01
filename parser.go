@@ -154,5 +154,3 @@ func (r *Parser) parseObj() error {
 func (r *Parser) popStack() {
 	r.stack = r.stack[:len(r.stack)-1]
 }
-
-func test() {}
