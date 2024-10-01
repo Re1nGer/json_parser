@@ -22,6 +22,7 @@ const (
 	STRING
 	NUMBER
 	COMMA
+	EOF
 )
 
 // how can you add row and col
@@ -50,11 +51,16 @@ func (r *Lexer) Tokenize() ([]Token, error) {
 
 	rd := r.Reader
 
+	//introduce counter to validate comma positions
+	//wouldn't work in nested structures
+	//stack is neccessary to keep structures validated
+
 	for err == nil {
 		cur, err = rd.ReadByte()
 
 		if err != nil {
 			if err == io.EOF {
+				r.Tokens = append(r.Tokens, Token{TokenType: EOF})
 				return r.Tokens, nil
 			}
 			fmt.Printf("reading error %v", err)

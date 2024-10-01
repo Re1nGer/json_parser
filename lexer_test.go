@@ -96,3 +96,16 @@ func TestSimpleErrorJson(t *testing.T) {
 
 	t.Log(p)
 }
+
+func TestJohn4(t *testing.T) {
+	sample := []byte("{ \"key\": \"value\", \"key-n\": 101, \"key-o\": { \"inner key\": \"inner value\" }, \"key-l\": [\"list value\"]}")
+
+	rd := bufio.NewReader(bytes.NewReader(sample))
+
+	p, err := NewLexer(rd).Tokenize()
+	if err != nil {
+		t.Errorf("error parsing %v", err)
+	}
+
+	t.Log(p)
+}

@@ -4,16 +4,17 @@ import (
 	"testing"
 )
 
-func TestEmptyObject(t *testing.T) {
-	sample := []byte("{}")
+func TestSimpleJsonParser(t *testing.T) {
+	sample := []byte("{\"key\": }")
 
-	s := NewParser()
+	parser, err := NewParser(sample)
+	if err != nil {
+		t.Errorf("error instantiating parser %v", err)
+	}
 
-	res := s.Parse(sample, 0)
-
-	t.Log(res)
-
-	if !res {
-		t.Error("incorrect parsing")
+	_, err = parser.Parse()
+	t.Log("tokens", parser.tokens)
+	if err != nil {
+		t.Errorf("error parsing %v", err)
 	}
 }
