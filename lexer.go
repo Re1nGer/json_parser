@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"unicode"
 )
 
 type TokenType int
@@ -98,7 +99,6 @@ func (r *Lexer) Tokenize() ([]Token, error) {
 				return nil, err
 			}
 			r.Tokens = append(r.Tokens, *t)
-
 		case ':':
 			r.Tokens = append(r.Tokens, Token{TokenType: COLON, Value: ":"})
 		case ',':
@@ -106,8 +106,17 @@ func (r *Lexer) Tokenize() ([]Token, error) {
 		case ' ': //empty space skip
 			continue
 		default:
-			//erronous state
-			return nil, fmt.Errorf("incorrect json structure")
+			if unicode.IsDigit(rune(cur)) {
+				r.Reader.UnreadByte()
+				t, err := r.tokenizeNumber()
+				if err != nil {
+					return nil, err
+				}
+				r.Tokens = append(r.Tokens, *t)
+			} else {
+				//erronous state
+				return nil, fmt.Errorf("incorrect json structure")
+			}
 		}
 	}
 
@@ -185,8 +194,24 @@ func (r *Lexer) tokenizeString(rd *bufio.Reader) (*Token, error) {
 	return t, nil
 }
 
-func tokenizeNumber() Token {
-	return Token{}
+func (r *Lexer) tokenizeNumber() (*Token, error) {
+	var buf bytes.Buffer
+	for {
+		d, _, err := r.Reader.ReadRune()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+		if unicode.IsDigit(d) || d == '-' || d == '+' || d == '.' || d == 'e' || d == 'E' {
+			buf.WriteRune(d)
+		} else {
+			r.Reader.UnreadRune()
+			break
+		}
+	}
+	return &Token{TokenType: NUMBER, Value: buf.String()}, nil
 }
 
 func (r *Lexer) tokenizeNull(rd *bufio.Reader) (*Token, error) {

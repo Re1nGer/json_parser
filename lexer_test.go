@@ -51,8 +51,8 @@ func TestJohnErrorTest(t *testing.T) {
 	rd := bufio.NewReader(bytes.NewReader(sample))
 
 	p, err := NewLexer(rd).Tokenize()
-	if err != nil {
-		t.Errorf("error parsing %v", err)
+	if err == nil {
+		t.Errorf("error didn't trigger")
 	}
 
 	t.Log(p)
@@ -72,7 +72,7 @@ func TestJohnTest2(t *testing.T) {
 }
 
 func TestJohnTest3(t *testing.T) {
-	sample := []byte("{\"key\": \"value\", \"key-o\": {}, \"key-l\": [] } ")
+	sample := []byte("{\"key\": \"value\", \"key-n\": 234, \"key-o\": {}, \"key-l\": [] } ")
 
 	rd := bufio.NewReader(bytes.NewReader(sample))
 
