@@ -2,6 +2,7 @@ package parser
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 )
@@ -67,9 +68,17 @@ func (r *Lexer) Tokenize(rd bufio.Reader) ([]Token, error) {
 		case ']':
 			r.Tokens = append(r.Tokens, Token{TokenType: RIGHT_BRACKET, Value: "]"})
 		case 'f':
-			r.Tokens = append(r.Tokens, tokenizeBool(rd)) //gotta think through how
+			t, err := r.tokenizeBool(&rd)
+			if err != nil {
+				return nil, err
+			}
+			r.Tokens = append(r.Tokens, *t)
 		case 't':
-			r.Tokens = append(r.Tokens, tokenizeBool(rd)) //gotta think through how
+			t, err := r.tokenizeBool(&rd)
+			if err != nil {
+				return nil, err
+			}
+			r.Tokens = append(r.Tokens, *t)
 
 		case '"':
 			//handle string
@@ -89,8 +98,36 @@ func (r *Lexer) Tokenize(rd bufio.Reader) ([]Token, error) {
 	return r.Tokens, nil
 }
 
-func tokenizeBool(rd bufio.Reader) Token {
-	return Token{}
+func (r *Lexer) tokenizeBool(rd *bufio.Reader) (*Token, error) {
+	//look further 5 bytes false
+	n, err := rd.Peek(4)
+	if err != nil {
+		return nil, err
+	}
+	ok := bytes.Equal(n, []byte("alse"))
+	if !ok {
+		n, err = rd.Peek(3)
+	}
+	ok1 := bytes.Equal(n, []byte("rue"))
+	if !ok && !ok1 {
+		return nil, fmt.Errorf("error parsing bool")
+	}
+	re := &Token{}
+	if ok {
+		re.TokenType = FALSE
+		re.Value = "false"
+	} else {
+		re.TokenType = TRUE
+		re.Value = "true"
+	}
+
+	if ok {
+		rd.Discard(4)
+	} else {
+		rd.Discard(3)
+	}
+
+	return re, nil
 }
 
 func (r *Lexer) tokenizeString(rd *bufio.Reader) (*Token, error) {
@@ -114,11 +151,13 @@ func (r *Lexer) tokenizeString(rd *bufio.Reader) (*Token, error) {
 
 	for cur_val != '"' && err == nil {
 		cur_val, err = rd.ReadByte()
-		val = append(val, cur_val)
-	}
+		if err != nil {
+			return nil, fmt.Errorf("error while parsing string token %v", err)
+		}
 
-	if err != nil {
-		return nil, fmt.Errorf("error while parsing string token %v", err)
+		if cur_val != '"' {
+			val = append(val, cur_val)
+		}
 	}
 
 	t.TokenType = STRING
@@ -136,5 +175,9 @@ func tokenizeObj() Token {
 }
 
 func tokenizeNumber() Token {
+	return Token{}
+}
+
+func tokenizeNull() Token {
 	return Token{}
 }
