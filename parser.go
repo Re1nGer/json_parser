@@ -50,6 +50,10 @@ func (r *Parser) parseValue() error {
 		return r.parseNull()
 	case COMMA:
 		return r.parseComma()
+	case RIGHT_BRACE:
+		return r.parseRightBrace()
+	case RIGHT_BRACKET:
+		return r.parseRightBracket()
 	default:
 		return fmt.Errorf("unknown entity or incorrect structure %s", cur.Value)
 	}
@@ -69,6 +73,25 @@ func NewParser(input []byte) (*Parser, error) {
 		curIdx: 0,
 		stack:  make([]TokenType, 0),
 	}, nil
+}
+
+func (r *Parser) parseRightBracket() error {
+	fmt.Println(r.stack, r.tokens, r.curIdx)
+	if r.last() != LEFT_BRACKET {
+		return fmt.Errorf("incorrect json structure (right bracket)")
+	}
+	r.popStack()
+	return nil
+}
+
+func (r *Parser) parseRightBrace() error {
+	fmt.Println("parse right brace")
+	if r.last() != LEFT_BRACE {
+		return fmt.Errorf("incorrect json structure (right brace)")
+	}
+	r.popStack()
+
+	return nil
 }
 
 func (r *Parser) parseString() error {
@@ -148,40 +171,7 @@ func (r *Parser) parseArray() error {
 	r.stack = append(r.stack, LEFT_BRACKET)
 
 	//guess gotta go for each loop here
-	cur := r.tokens[r.curIdx]
-
-	switch cur.TokenType {
-	case LEFT_BRACKET:
-		return r.parseArray()
-	case LEFT_BRACE:
-		//handle deeply nested structures
-		return r.parseObj() //recursion
-	case EOF, RIGHT_BRACE:
-		return fmt.Errorf("incorrect json structure")
-	default:
-		//array of primitives
-		comma := false
-		for r.curIdx < len(r.tokens)-1 && r.tokens[r.curIdx].TokenType != RIGHT_BRACKET {
-			//value and comma
-			if comma && r.tokens[r.curIdx].TokenType != COMMA {
-				return fmt.Errorf("incorrect json structure")
-			}
-			fmt.Println("inside first loop", r.curIdx, r.tokens, r.stack)
-			comma = !comma
-			r.curIdx++
-			//[1,2]
-		}
-
-		for r.curIdx < len(r.tokens)-1 && r.tokens[r.curIdx].TokenType == RIGHT_BRACKET {
-			if r.stack[len(r.stack)-1] != LEFT_BRACKET {
-				return fmt.Errorf("incorrect json structure")
-			}
-			r.curIdx++
-			r.popStack()
-			fmt.Println("inside second loop", r.curIdx, r.tokens, r.stack)
-		}
-		return nil
-	}
+	return r.parseValue()
 }
 
 func (r *Parser) parseObj() error {
@@ -191,12 +181,18 @@ func (r *Parser) parseObj() error {
 
 	cur := r.tokens[r.curIdx]
 
-	if cur.TokenType != STRING && cur.TokenType != RIGHT_BRACE {
-		return fmt.Errorf("incorrect json structure (object) 1")
+	if cur.TokenType == LEFT_BRACE {
+		return r.parseObj()
 	}
 
+	fmt.Println("cur at obj", cur)
+
 	if r.tokens[r.curIdx].TokenType == RIGHT_BRACE {
-		return nil
+		return r.parseValue()
+	}
+
+	if cur.TokenType != STRING && cur.TokenType != RIGHT_BRACE {
+		return fmt.Errorf("incorrect json structure (object) 1")
 	}
 
 	//that's where we can consume key part
@@ -207,6 +203,7 @@ func (r *Parser) parseObj() error {
 		return fmt.Errorf("incorrect json structure (object) 2")
 	}
 
+	//skip colon
 	r.curIdx++
 
 	err := r.parseValue()
@@ -231,7 +228,13 @@ func (r *Parser) parseObj() error {
 }
 
 func (r *Parser) popStack() {
+	fmt.Print("before pop", r.stack)
 	r.stack = r.stack[:len(r.stack)-1]
+	fmt.Print("after pop", r.stack)
+}
+
+func (r *Parser) last() TokenType {
+	return r.stack[len(r.stack)-1]
 }
 
 func (r *Parser) isValidNumber(s string) bool {

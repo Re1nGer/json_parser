@@ -20,7 +20,7 @@ func TestSimpleJsonParser(t *testing.T) {
 }
 
 func TestSimplArray(t *testing.T) {
-	sample := []byte("[{}]")
+	sample := []byte("[[]]")
 
 	parser, err := NewParser(sample)
 	if err != nil {
