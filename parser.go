@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"strconv"
 )
 
 type Parser struct {
@@ -40,15 +41,16 @@ func (r *Parser) parseValue() error {
 	case STRING: //just skip ahead
 		return r.parseString()
 	case TRUE:
+		return r.parseTrue()
 	case FALSE:
+		return r.parseFalse()
 	case NUMBER:
+		return r.parseNumber()
 	case NULL:
-
+		return r.parseNull()
 	default:
 		return fmt.Errorf("unknown entity or incorrect structure %s", cur.Value)
 	}
-
-	return nil
 }
 
 func NewParser(input []byte) (*Parser, error) {
@@ -70,6 +72,34 @@ func NewParser(input []byte) (*Parser, error) {
 func (r *Parser) parseString() error {
 	if r.tokens[r.curIdx].TokenType != STRING {
 		return fmt.Errorf("incorrect json structure (string)")
+	}
+	return nil
+}
+
+func (r *Parser) parseTrue() error {
+	if r.tokens[r.curIdx].Value != "true" {
+		return fmt.Errorf("incorrect json structure (boolean) true")
+	}
+	return nil
+}
+
+func (r *Parser) parseFalse() error {
+	if r.tokens[r.curIdx].Value != "false" {
+		return fmt.Errorf("incorrect json structure (boolean) false")
+	}
+	return nil
+}
+
+func (r *Parser) parseNumber() error {
+	if !r.isValidNumber(r.tokens[r.curIdx].Value) {
+		return fmt.Errorf("incorrect json structure number")
+	}
+	return nil
+}
+
+func (r *Parser) parseNull() error {
+	if r.tokens[r.curIdx].Value != "null" {
+		return fmt.Errorf("incorrect json structure null")
 	}
 	return nil
 }
@@ -153,4 +183,9 @@ func (r *Parser) parseObj() error {
 
 func (r *Parser) popStack() {
 	r.stack = r.stack[:len(r.stack)-1]
+}
+
+func (r *Parser) isValidNumber(s string) bool {
+	_, err := strconv.ParseFloat(s, 64)
+	return err == nil
 }
