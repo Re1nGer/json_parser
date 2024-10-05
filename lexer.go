@@ -202,6 +202,11 @@ func (r *Lexer) tokenizeString(rd *bufio.Reader) (*Token, error) {
 
 func (r *Lexer) tokenizeNumber() (*Token, error) {
 	var buf bytes.Buffer
+	isFirstDigit := true
+	hasLeadingZero := false
+	isFloat := false
+	isExponent := false
+
 	for {
 		d, _, err := r.Reader.ReadRune()
 		if err != nil {
@@ -210,13 +215,57 @@ func (r *Lexer) tokenizeNumber() (*Token, error) {
 			}
 			return nil, err
 		}
-		if unicode.IsDigit(d) || d == '-' || d == '+' || d == '.' || d == 'e' || d == 'E' {
+
+		if unicode.IsDigit(d) {
+			if isFirstDigit {
+				if d == '0' {
+					hasLeadingZero = true
+				}
+				isFirstDigit = false
+			} else if hasLeadingZero && !isFloat && !isExponent {
+				// Check for hexadecimal numbers
+				if buf.Len() == 1 { // We've only seen the leading '0' so far
+					nextChar, _, err := r.Reader.ReadRune()
+					if err == nil {
+						if nextChar == 'x' || nextChar == 'X' {
+							return nil, fmt.Errorf("hexadecimal numbers are not allowed")
+						}
+						r.Reader.UnreadRune() // Put back the character we just read
+					}
+				}
+				return nil, fmt.Errorf("invalid number format: leading zero")
+			}
+			buf.WriteRune(d)
+		} else if d == '-' || d == '+' {
+			if buf.Len() > 0 && !isExponent {
+				r.Reader.UnreadRune()
+				break
+			}
+			buf.WriteRune(d)
+		} else if d == '.' {
+			if isFloat {
+				return nil, fmt.Errorf("invalid number format: multiple decimal points")
+			}
+			isFloat = true
+			buf.WriteRune(d)
+		} else if d == 'e' || d == 'E' {
+			if isExponent {
+				return nil, fmt.Errorf("invalid number format: multiple exponents")
+			}
+			isExponent = true
+			isFloat = true // Treat numbers with exponents as floats
 			buf.WriteRune(d)
 		} else {
 			r.Reader.UnreadRune()
 			break
 		}
 	}
+
+	// Final check for hex numbers at the end of parsing
+	if hasLeadingZero && buf.Len() > 1 && (buf.Bytes()[1] == 'x' || buf.Bytes()[1] == 'X') {
+		return nil, fmt.Errorf("hexadecimal numbers are not allowed")
+	}
+
 	return &Token{TokenType: NUMBER, Value: buf.String()}, nil
 }
 

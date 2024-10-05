@@ -196,19 +196,43 @@ func (r *Parser) parseArray() error {
 		// Move to the next token
 		r.curIdx++
 
-		// If not, the next token should be a comma or not if single element
-		if r.tokens[r.curIdx].TokenType != COMMA {
-			return fmt.Errorf("expected comma or closing bracket in array")
-		}
+		fmt.Println("cur value:", r.tokens[r.curIdx].Value, "tokens:", r.tokens)
+
+		/* 		if r.tokens[r.curIdx].TokenType == RIGHT_BRACKET {
+			if r.last() == LEFT_BRACKET {
+				r.popStack()
+			}
+			return nil
+		} */
 
 		if r.tokens[r.curIdx].TokenType == COMMA && r.tokens[r.curIdx+1].TokenType == RIGHT_BRACKET {
 			return fmt.Errorf("incorrect json structure: extra comma")
+		}
+
+		// If not, the next token should be a comma or not if single element
+
+		if r.tokens[r.curIdx].TokenType == RIGHT_BRACKET {
+			break
+		}
+
+		if r.tokens[r.curIdx].TokenType != COMMA {
+			return fmt.Errorf("expected comma or closing bracket in array, but got %s %v", r.tokens[r.curIdx].Value, r.stack)
 		}
 
 		// Move past the comma
 		r.curIdx++
 	}
 
+	for r.tokens[r.curIdx].TokenType == RIGHT_BRACKET {
+		if len(r.stack) > 0 && r.last() == LEFT_BRACKET {
+			r.popStack()
+		} else {
+			return fmt.Errorf("incorrect json: unbalanced brackets")
+		}
+		r.curIdx++
+	}
+	fmt.Println("Got out", r.curIdx, r.stack, len(r.stack))
+	return nil
 }
 
 func (r *Parser) isValue(el TokenType) bool {
@@ -246,7 +270,7 @@ func (r *Parser) parseObj() error {
 
 	value := r.tokens[r.curIdx]
 
-	fmt.Println("cur value", value)
+	fmt.Println("cur value", value, r.tokens)
 
 	err := r.parseValue()
 	if err != nil {
@@ -255,11 +279,15 @@ func (r *Parser) parseObj() error {
 
 	r.curIdx++ //either could be } or ,
 
-	if r.tokens[r.curIdx].TokenType == COMMA || r.tokens[r.curIdx].TokenType == RIGHT_BRACE {
+	if (r.tokens[r.curIdx].TokenType == COMMA && r.tokens[r.curIdx+1].TokenType == STRING) || r.tokens[r.curIdx].TokenType == RIGHT_BRACE {
 		if r.tokens[r.curIdx].TokenType == RIGHT_BRACE && r.last() == LEFT_BRACE {
 			r.popStack()
 		}
 		r.curIdx++
+	}
+
+	if r.tokens[r.curIdx].TokenType == COMMA && r.tokens[r.curIdx+1].TokenType != STRING {
+		return fmt.Errorf("incorrect json structure: extra comma")
 	}
 
 	for r.tokens[r.curIdx].TokenType == STRING {
