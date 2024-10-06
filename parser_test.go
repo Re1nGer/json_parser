@@ -42,11 +42,11 @@ func TestNestedJson(t *testing.T) {
 	parser, err := NewParser(sample)
 
 	if err != nil {
-		t.Errorf("error instantiating parser %v", err)
+		t.Errorf("error instantiating parser %v %v", err, parser.tokens)
 	}
 
-	t.Log("tokens", parser.tokens)
 	_, err = parser.Parse()
+	t.Log("tokens", parser.tokens, parser.stack)
 	if err != nil {
 		t.Errorf("error parsing %v", err)
 	}
@@ -280,19 +280,23 @@ func TestFailNumbersCannotBeHex(t *testing.T) {
 	fmt.Println("error raised", err)
 } */
 
-/* func TestFailIlTooDeep(t *testing.T) {
-	sample := []byte("[[[[[[[[[[[[[[[[[[[[\"Too deep\"]]]]]]]]]]]]]]]]]]]]")
+func TestFailIlTooDeep(t *testing.T) {
+	sample := []byte("[[[[[[[[[[[[[[[[[[[[\"Not so Too deep\"]]]]]]]]]]]]]]]]]]]]")
 
 	p, err := NewParser(sample)
 
-	_, err = p.Parse()
+	ok, err := p.Parse()
 
-	if err == nil {
-		t.Errorf("error should have been raised")
+	if !ok {
+		t.Fail()
+	}
+
+	if err != nil {
+		t.Errorf("error  %v", err)
 	}
 
 	fmt.Println("error raised", err)
-} */
+}
 
 func TestFailMissingColon(t *testing.T) {
 	sample := []byte("{\"Missing colon\" null}")
@@ -388,6 +392,16 @@ func TestFailSingleQuote(t *testing.T) {
 
 func TestShouldPass(t *testing.T) {
 	sample := []byte("{ \"JSON Test Pattern pass3\": { \"The outermost value\": \"must be an object or array.\", \"In this test\": \"It is an object.\" } } ")
+
+	_, err := NewParser(sample)
+
+	if err != nil {
+		t.Errorf("error %v", err)
+	}
+}
+
+func TestShouldPassNotDeep(t *testing.T) {
+	sample := []byte("[[[[[[[[[[[[[[[[[[[\"Not too deep\"]]]]]]]]]]]]]]]]]]]")
 
 	_, err := NewParser(sample)
 

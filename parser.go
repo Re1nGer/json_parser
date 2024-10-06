@@ -25,8 +25,12 @@ func (r *Parser) Parse() (bool, error) {
 		}
 		r.curIdx++
 	}
+	/* 	if len(r.stack) != 0 {
+		return false, fmt.Errorf("braces or brackets are inbalanced")
+	} */
 
 	return true, nil
+
 }
 
 // gotta resolve comma problem
@@ -80,7 +84,7 @@ func NewParser(input []byte) (*Parser, error) {
 }
 
 func (r *Parser) parseRightBracket() error {
-	fmt.Println(r.stack, r.tokens, r.curIdx)
+	fmt.Println(r.stack, r.curIdx)
 	if r.last() != LEFT_BRACKET {
 		return fmt.Errorf("incorrect json structure (right bracket)")
 	}
@@ -177,7 +181,7 @@ func (r *Parser) parseArray() error {
 	r.stack = append(r.stack, LEFT_BRACKET)
 
 	// Check if the array is empty
-	if r.tokens[r.curIdx].TokenType == RIGHT_BRACKET {
+	if r.curIdx < len(r.tokens)-1 && r.tokens[r.curIdx].TokenType == RIGHT_BRACKET {
 		return nil
 	}
 
@@ -187,6 +191,9 @@ func (r *Parser) parseArray() error {
 		if err != nil {
 			return err
 		}
+		if r.curIdx >= len(r.tokens)-1 {
+			return nil
+		}
 
 		// Check if we've reached the end of the array
 		if r.tokens[r.curIdx].TokenType == RIGHT_BRACKET {
@@ -195,8 +202,8 @@ func (r *Parser) parseArray() error {
 
 		// Move to the next token
 		r.curIdx++
-
-		if r.tokens[r.curIdx].TokenType == LEFT_BRACE {
+		//fmt.Println("blew up here?", r.curIdx)
+		if r.curIdx < len(r.tokens)-1 && r.tokens[r.curIdx].TokenType == LEFT_BRACE {
 			continue
 		}
 
@@ -209,18 +216,18 @@ func (r *Parser) parseArray() error {
 			return nil
 		} */
 
-		if r.tokens[r.curIdx].TokenType == COMMA && r.tokens[r.curIdx+1].TokenType == RIGHT_BRACKET {
+		if r.curIdx < len(r.tokens)-1 && r.tokens[r.curIdx].TokenType == COMMA && r.tokens[r.curIdx+1].TokenType == RIGHT_BRACKET {
 			return fmt.Errorf("incorrect json structure: extra comma")
 		}
 
 		// If not, the next token should be a comma or not if single element
 
-		if r.tokens[r.curIdx].TokenType == RIGHT_BRACKET {
+		if r.curIdx < len(r.tokens)-1 && r.tokens[r.curIdx].TokenType == RIGHT_BRACKET {
 			break
 		}
 
-		fmt.Println("cur", r.tokens[r.curIdx], "before", r.tokens[r.curIdx-1], "after", r.tokens[r.curIdx+1])
-		if r.tokens[r.curIdx].TokenType != COMMA {
+		//fmt.Println("cur", r.tokens[r.curIdx], "before", r.tokens[r.curIdx-1], "after", r.tokens[r.curIdx+1])
+		if r.curIdx < len(r.tokens)-1 && r.tokens[r.curIdx].TokenType != COMMA {
 			return fmt.Errorf("expected comma or closing bracket in array, but got %s %v", r.tokens[r.curIdx].Value, r.stack)
 		}
 
@@ -228,7 +235,7 @@ func (r *Parser) parseArray() error {
 		r.curIdx++
 	}
 
-	if r.tokens[r.curIdx].TokenType == RIGHT_BRACKET {
+	for r.curIdx < len(r.tokens)-1 && r.tokens[r.curIdx].TokenType == RIGHT_BRACKET {
 		if len(r.stack) > 0 && r.last() == LEFT_BRACKET {
 			r.popStack()
 		} else {
@@ -236,7 +243,7 @@ func (r *Parser) parseArray() error {
 		}
 		r.curIdx++
 	}
-	fmt.Println("Got out", r.curIdx, r.stack, len(r.stack))
+	//fmt.Println("Got out", r.curIdx, r.stack, len(r.stack), r.tokens[r.curIdx])
 	return nil
 }
 
@@ -280,7 +287,7 @@ func (r *Parser) parseObj() error {
 		return err
 	}
 
-	r.curIdx++ //either could be } or ,
+	r.curIdx++ //either could be } or , or another key
 
 	if r.curIdx < len(r.tokens)-2 && r.tokens[r.curIdx].TokenType == COMMA && r.tokens[r.curIdx+1].TokenType == RIGHT_BRACE {
 		return fmt.Errorf("incorrect json structure: extra comma at obj")
@@ -292,6 +299,7 @@ func (r *Parser) parseObj() error {
 		}
 		r.curIdx++
 	}
+	//r.curIdx++
 
 	//fmt.Println("cur", r.tokens[r.curIdx], "rest:", r.tokens[r.curIdx:], "next:", r.tokens[r.curIdx+1])
 	/* 	if r.tokens[r.curIdx].TokenType == COMMA && r.tokens[r.curIdx+1].TokenType != STRING {
@@ -353,7 +361,9 @@ func (r *Parser) parseKeyvalue() error {
 
 func (r *Parser) popStack() {
 	fmt.Print("before pop", r.stack)
-	r.stack = r.stack[:len(r.stack)-1]
+	if len(r.stack) > 0 {
+		r.stack = r.stack[:len(r.stack)-1]
+	}
 	fmt.Print("after pop", r.stack)
 }
 
