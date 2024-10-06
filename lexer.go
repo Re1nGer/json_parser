@@ -111,7 +111,30 @@ func (r *Lexer) Tokenize() ([]Token, error) {
 			r.Tokens = append(r.Tokens, Token{TokenType: COMMA, Value: ","})
 		case ' ': //empty space skip
 			continue
+		case '\\':
+			continue
+		case '-':
+			// Handle negative numbers
+			nextByte, err := rd.ReadByte()
+			if err != nil {
+				return nil, err
+			}
+			if unicode.IsDigit(rune(nextByte)) {
+				rd.UnreadByte() // Put back the digit
+				rd.UnreadByte() // Put back the minus sign
+				t, err := r.tokenizeNumber()
+				if err != nil {
+					return nil, err
+				}
+				r.Tokens = append(r.Tokens, *t)
+			} else {
+				return nil, fmt.Errorf("invalid character after minus sign: %c", nextByte)
+			}
 		default:
+			if unicode.IsSpace(rune(cur)) {
+				continue
+			}
+			fmt.Println("Unknown elements", string(cur), cur)
 			if unicode.IsDigit(rune(cur)) {
 				r.Reader.UnreadByte()
 				t, err := r.tokenizeNumber()
@@ -121,6 +144,7 @@ func (r *Lexer) Tokenize() ([]Token, error) {
 				r.Tokens = append(r.Tokens, *t)
 			} else {
 				//erronous state
+				fmt.Println("error element", cur, string(cur), r.Tokens)
 				return nil, fmt.Errorf("incorrect json structure")
 			}
 		}
@@ -166,13 +190,25 @@ func (r *Lexer) tokenizeBool(rd *bufio.Reader) (*Token, error) {
 
 func (r *Lexer) tokenizeString(rd *bufio.Reader) (*Token, error) {
 
+	//handle "" case
+	var val []byte
+	var cur_val byte
+
+	n, err := rd.Peek(1)
+
+	//fmt.Println("now value", string(n))
+
+	if n[0] == '"' {
+		rd.Discard(1)
+		return &Token{TokenType: STRING, Value: ""}, nil
+	}
+
 	cur, err := rd.ReadByte()
 	if err != nil {
 		return nil, err
 	}
 
-	var val []byte
-	var cur_val byte
+	//fmt.Println("cur value", string(cur))
 
 	if cur == '\\' || cur == '"' {
 		//skip
@@ -181,9 +217,15 @@ func (r *Lexer) tokenizeString(rd *bufio.Reader) (*Token, error) {
 		val = append(val, cur)
 	}
 
+	//has to handle \" escape double string case
 	t := &Token{}
 
 	for cur_val != '"' && err == nil {
+		next, _ := rd.Peek(1)
+		if cur_val == '\\' && next[0] == '"' {
+			//skip escape string
+			rd.Discard(2)
+		}
 		cur_val, err = rd.ReadByte()
 		if err != nil {
 			return nil, fmt.Errorf("error while parsing string token %v", err)

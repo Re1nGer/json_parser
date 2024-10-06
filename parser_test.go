@@ -156,7 +156,7 @@ func TestFailMissingValue(t *testing.T) {
 	}
 }
 
-/* func TestFailCommaAfterClose(t *testing.T) {
+func TestFailCommaAfterClose(t *testing.T) {
 	sample := []byte("[\"Comma after the close\"],")
 
 	p, err := NewParser(sample)
@@ -168,7 +168,7 @@ func TestFailMissingValue(t *testing.T) {
 	if err == nil {
 		t.Errorf("error should have been raised")
 	}
-} */
+}
 
 func TestFailExtraClose(t *testing.T) {
 	sample := []byte("[\"Extra close\"]]")
