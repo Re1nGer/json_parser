@@ -33,6 +33,14 @@ func (r *Parser) Parse() (bool, error) {
 
 }
 
+func (r *Parser) GetTokens() []Token {
+	return r.tokens
+}
+
+func (r *Parser) GetStack() []TokenType {
+	return r.stack
+}
+
 // gotta resolve comma problem
 func (r *Parser) parseValue() error {
 	cur := r.tokens[r.curIdx]
@@ -350,6 +358,9 @@ func (r *Parser) parseKeyvalue() error {
 			if err != nil {
 				return err
 			}
+		}
+		if r.tokens[r.curIdx].TokenType == RIGHT_BRACE && r.last() == LEFT_BRACE {
+			r.popStack()
 		}
 		r.curIdx++
 	}

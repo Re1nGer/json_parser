@@ -196,8 +196,6 @@ func (r *Lexer) tokenizeString(rd *bufio.Reader) (*Token, error) {
 
 	n, err := rd.Peek(1)
 
-	//fmt.Println("now value", string(n))
-
 	if n[0] == '"' {
 		rd.Discard(1)
 		return &Token{TokenType: STRING, Value: ""}, nil
@@ -222,9 +220,13 @@ func (r *Lexer) tokenizeString(rd *bufio.Reader) (*Token, error) {
 
 	for cur_val != '"' && err == nil {
 		next, _ := rd.Peek(1)
+		if cur_val == '\t' || cur_val == '\r' || cur_val == '\b' || cur_val == '\f' || cur_val == '\n' || cur_val == '\u0022' {
+			rd.Discard(1)
+			continue
+		}
 		if cur_val == '\\' && next[0] == '"' {
 			//skip escape string
-			rd.Discard(2)
+			rd.Discard(1)
 		}
 		cur_val, err = rd.ReadByte()
 		if err != nil {
