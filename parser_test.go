@@ -2,6 +2,8 @@ package parser
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -265,7 +267,6 @@ func TestFailNumbersCannotBeHex(t *testing.T) {
 	fmt.Println("error raised", err)
 } */
 
-//separate case to handle on lexer level
 /* func TestFailIllegalBackslashEscape2(t *testing.T) {
 	sample := []byte("[\"Illegal backslash escape: \017\"]")
 
@@ -274,7 +275,7 @@ func TestFailNumbersCannotBeHex(t *testing.T) {
 	_, err = p.Parse()
 
 	if err == nil {
-		t.Errorf("error should have been raised")
+		t.Errorf("error should have been raised: %v", p.tokens)
 	}
 
 	fmt.Println("error raised", err)
@@ -407,5 +408,62 @@ func TestShouldPassNotDeep(t *testing.T) {
 
 	if err != nil {
 		t.Errorf("error %v", err)
+	}
+}
+
+func TestParseObj(t *testing.T) {
+	sample := []byte("{\"key\": { \"nested\": \"value\", \"nested2\": \"value1\" }}")
+
+	p, _ := NewParser(sample)
+
+	err := p.ParseObj()
+	if err != nil {
+		t.Errorf("error %v", err)
+		t.Fail()
+	}
+
+	fmt.Println("stack", p.stack, "tokens", p.tokens)
+}
+
+func TestDeeplyNestedObj(t *testing.T) {
+
+	path := "./main/testpass"
+
+	files, err := os.ReadDir(path)
+	if err != nil {
+		fmt.Printf("Error reading directory: %v\n", err)
+		os.Exit(1)
+	}
+
+	for _, file := range files {
+		if !file.IsDir() && file.Name() == "pass2.json" {
+			filename := file.Name()
+			filePath := filepath.Join(path, filename)
+			fmt.Printf("Processing file: %s\n", filePath)
+
+			// Read file content
+			content, err := os.ReadFile(filePath)
+			if err != nil {
+				fmt.Printf("Error reading file %s: %v\n", filePath, err)
+				continue
+			}
+
+			fmt.Println("content", string(content))
+
+			p, err := NewParser(content)
+
+			if err != nil {
+				fmt.Printf("Error parsing JSON in file %s: %v\n %v\n", filePath, err, p.tokens)
+				continue
+			}
+
+			err = p.ParseObj()
+
+			if err != nil {
+				fmt.Printf("Error parsing JSON in file %s: %v\n %v", filePath, err, p.tokens)
+			} else {
+				fmt.Printf("Successfully parsed JSON in file %s\n %v\n, stack: %v", filePath, p.GetTokens(), p.stack)
+			}
+		}
 	}
 }

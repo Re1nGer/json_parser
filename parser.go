@@ -33,8 +33,14 @@ func (r *Parser) Parse() (bool, error) {
 
 }
 
-func (r *Parser) GetTokens() []Token {
-	return r.tokens
+func (r *Parser) GetTokens() []string {
+	var s []string = make([]string, 0)
+
+	for i := 0; i < len(r.tokens); i++ {
+		s = append(s, r.tokens[i].Value)
+	}
+
+	return s
 }
 
 func (r *Parser) GetStack() []TokenType {
@@ -50,24 +56,22 @@ func (r *Parser) parseValue() error {
 		return r.parseObj()
 	case LEFT_BRACKET:
 		return r.parseArray()
-	case STRING: //just skip ahead
-		return r.parseString()
-	case TRUE:
-		return r.parseTrue()
-	case FALSE:
-		return r.parseFalse()
-	case NUMBER:
-		return r.parseNumber()
-	case NULL:
-		return r.parseNull()
-	case COMMA:
-		return r.parseComma()
+	case STRING, TRUE, FALSE, NULL, NUMBER:
+		return nil
 	case RIGHT_BRACE:
-		return r.parseRightBrace()
+		if len(r.stack) == 0 || r.stack[len(r.stack)-1] != LEFT_BRACE {
+			return fmt.Errorf("unexpected }")
+		}
+		r.stack = r.stack[:len(r.stack)-1]
+		return nil
 	case RIGHT_BRACKET:
-		return r.parseRightBracket()
+		if len(r.stack) == 0 || r.stack[len(r.stack)-1] != LEFT_BRACKET {
+			return fmt.Errorf("unexpected ]")
+		}
+		r.stack = r.stack[:len(r.stack)-1]
+		return nil
 	default:
-		return fmt.Errorf("unknown entity or incorrect structure %s", cur.Value)
+		return fmt.Errorf("unexpected token: %v", cur)
 	}
 }
 
@@ -259,54 +263,57 @@ func (r *Parser) isValue(el TokenType) bool {
 	return el == TRUE || el == FALSE || el == NULL || el == NUMBER || el == STRING
 }
 
+func (r *Parser) ParseObj() error {
+	return r.parseObj()
+}
+
 func (r *Parser) parseObj() error {
 
-	r.curIdx++ //skip opening bracket {
 	r.stack = append(r.stack, LEFT_BRACE)
 
-	key := r.tokens[r.curIdx]
+	r.curIdx++ //skip opening bracket {
 
-	if key.TokenType == RIGHT_BRACE {
-		return r.parseValue()
+	if r.tokens[r.curIdx].TokenType == RIGHT_BRACE {
+		return r.parseRightBrace()
 	}
 
-	//key always should be of string type
+	//r.curIdx++ // could be } or ,
 
-	if key.TokenType != STRING {
-		return fmt.Errorf("incorrect json structure (string) but got: %s", key.Value)
-	}
-
-	r.curIdx++ //move on to colon
-
-	colon := r.tokens[r.curIdx]
-
-	if colon.TokenType != COLON {
-		return fmt.Errorf("incorrect json structure (colon) but got: %s", colon.Value)
-	}
-
-	r.curIdx++ //move on to value
-
-	//value := r.tokens[r.curIdx]
-
-	//fmt.Println("cur value", value, r.tokens)
-
-	err := r.parseValue()
-	if err != nil {
-		return err
-	}
-
-	r.curIdx++ //either could be } or , or another key
-
-	if r.curIdx < len(r.tokens)-2 && r.tokens[r.curIdx].TokenType == COMMA && r.tokens[r.curIdx+1].TokenType == RIGHT_BRACE {
-		return fmt.Errorf("incorrect json structure: extra comma at obj")
-	}
-
-	if (r.tokens[r.curIdx].TokenType == COMMA && r.tokens[r.curIdx+1].TokenType == STRING) || r.tokens[r.curIdx].TokenType == RIGHT_BRACE {
-		if r.tokens[r.curIdx].TokenType == RIGHT_BRACE && r.last() == LEFT_BRACE {
-			r.popStack()
+	for r.tokens[r.curIdx].TokenType != RIGHT_BRACE {
+		err := r.parseKeyvalue()
+		if err != nil {
+			return err
 		}
 		r.curIdx++
 	}
+
+	if r.tokens[r.curIdx].TokenType != RIGHT_BRACE {
+		return fmt.Errorf("error incorrect json structure (right brace)")
+	}
+
+	if r.last() != LEFT_BRACE {
+		return fmt.Errorf("error incorrect json structure unbalanced braces")
+	}
+
+	if len(r.stack) > 0 {
+		r.popStack()
+	}
+
+	//
+	// { key : { nested: val, nested1: val1 } }
+
+	/* 	r.curIdx++ //either could be } or , or another key
+
+	   	if r.curIdx < len(r.tokens)-2 && r.tokens[r.curIdx].TokenType == COMMA && r.tokens[r.curIdx+1].TokenType == RIGHT_BRACE {
+	   		return fmt.Errorf("incorrect json structure: extra comma at obj")
+	   	}
+
+	   	if (r.tokens[r.curIdx].TokenType == COMMA && r.tokens[r.curIdx+1].TokenType == STRING) || r.tokens[r.curIdx].TokenType == RIGHT_BRACE {
+	   		if r.tokens[r.curIdx].TokenType == RIGHT_BRACE && r.last() == LEFT_BRACE {
+	   			r.popStack()
+	   		}
+	   		r.curIdx++
+	   	} */
 	//r.curIdx++
 
 	//fmt.Println("cur", r.tokens[r.curIdx], "rest:", r.tokens[r.curIdx:], "next:", r.tokens[r.curIdx+1])
@@ -314,12 +321,12 @@ func (r *Parser) parseObj() error {
 		return fmt.Errorf("incorrect json structure: extra comma at obj")
 	} */
 
-	for r.tokens[r.curIdx].TokenType == STRING {
+	/* 	for r.tokens[r.curIdx].TokenType == STRING {
 		err := r.parseKeyvalue()
 		if err != nil {
 			return err
 		}
-	}
+	} */
 
 	fmt.Println(r.stack, "went after", r.curIdx, len(r.tokens), "cur value:", r.tokens[r.curIdx].Value)
 	//need to handle deeply nested structures
@@ -332,7 +339,7 @@ func (r *Parser) parseKeyvalue() error {
 	cur := r.tokens[r.curIdx]
 
 	if cur.TokenType != STRING {
-		return fmt.Errorf("incorrect json structure (object) 1, got: %s", cur.Value)
+		return fmt.Errorf("incorrect json structure (object) 1, got: %s, prev: %v", cur.Value, r.tokens[r.curIdx-1])
 	}
 
 	r.curIdx++
@@ -350,9 +357,13 @@ func (r *Parser) parseKeyvalue() error {
 		return err
 	}
 
+	if r.curIdx+1 < len(r.tokens)-1 && r.tokens[r.curIdx+1].TokenType == COMMA {
+		r.curIdx++
+	}
+
 	fmt.Println(r.curIdx, "cur", r.tokens[r.curIdx].Value)
-	r.curIdx++
-	if r.curIdx < len(r.tokens)-1 && (r.tokens[r.curIdx].TokenType == COMMA || r.tokens[r.curIdx].TokenType == RIGHT_BRACE) {
+	//r.curIdx++
+	/* 	if r.curIdx < len(r.tokens)-1 && (r.tokens[r.curIdx].TokenType == COMMA || r.tokens[r.curIdx].TokenType == RIGHT_BRACE) {
 		if r.tokens[r.curIdx].TokenType == COMMA {
 			err := r.parseComma()
 			if err != nil {
@@ -363,7 +374,7 @@ func (r *Parser) parseKeyvalue() error {
 			r.popStack()
 		}
 		r.curIdx++
-	}
+	} */
 
 	//potential recursion in case value in an object
 
