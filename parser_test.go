@@ -8,7 +8,7 @@ import (
 )
 
 func TestSimpleJsonParser(t *testing.T) {
-	sample := []byte("{\"key\": \"key\"}")
+	sample := []byte("{\"key\": \"value\"}")
 
 	parser, err := NewParser(sample)
 	if err != nil {
@@ -56,7 +56,7 @@ func TestNestedJson(t *testing.T) {
 
 func TestNestedWithArrayJson(t *testing.T) {
 
-	sample := []byte("{\"key\": \"value\", \"key-n\": 101, \"key-o\": { \"inner key\": \"inner value\", \"inner-key2\": \"inner value\" }, \"arr\":[{\"nested\": \"jee\"}]} ")
+	sample := []byte("{\"arr\":[{\"nested\":\"jee\"}, { \"another\" : \"val\" }]}")
 
 	parser, err := NewParser(sample)
 
@@ -187,13 +187,13 @@ func TestFailExtraClose(t *testing.T) {
 }
 
 func TestFailExtraCommaTrue(t *testing.T) {
-	sample := []byte("{\"Extra comma\": true,}")
+	sample := []byte("{\"Extra comma\": true, }")
 
 	p, err := NewParser(sample)
 
-	_, err = p.Parse()
+	err = p.parseObj()
 
-	fmt.Println("error raised", err)
+	fmt.Println("error raised", err, p.tokens)
 
 	if err == nil {
 		t.Errorf("error should have been raised")
@@ -207,7 +207,7 @@ func TestFailMisplacedQuoteValue(t *testing.T) {
 
 	_, err = p.Parse()
 
-	fmt.Println("error raised", err)
+	fmt.Println("error raised", err, p.tokens)
 
 	if err == nil {
 		t.Errorf("error should have been raised")
@@ -402,13 +402,22 @@ func TestShouldPass(t *testing.T) {
 }
 
 func TestShouldPassNotDeep(t *testing.T) {
-	sample := []byte("[[[[[[[[[[[[[[[[[[[\"Not too deep\"]]]]]]]]]]]]]]]]]]]")
+	sample := []byte("[[[[[[[[[[[[[[[[[[[[[[[[[[[[[\"not too deep\"]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]")
 
-	_, err := NewParser(sample)
+	p, err := NewParser(sample)
+
+	err = p.parseArray()
+
+	if err != nil {
+		t.Errorf("error %v", err)
+		t.Fail()
+	}
 
 	if err != nil {
 		t.Errorf("error %v", err)
 	}
+
+	t.Log(p.stack)
 }
 
 func TestParseObj(t *testing.T) {

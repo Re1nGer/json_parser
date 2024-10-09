@@ -25,9 +25,9 @@ func (r *Parser) Parse() (bool, error) {
 		}
 		r.curIdx++
 	}
-	/* 	if len(r.stack) != 0 {
+	if len(r.stack) != 0 {
 		return false, fmt.Errorf("braces or brackets are inbalanced")
-	} */
+	}
 
 	return true, nil
 
@@ -60,7 +60,7 @@ func (r *Parser) parseValue() error {
 		return nil
 	case RIGHT_BRACE:
 		if len(r.stack) == 0 || r.stack[len(r.stack)-1] != LEFT_BRACE {
-			return fmt.Errorf("unexpected }")
+			return fmt.Errorf("unexpected },  position %d stack %v", r.curIdx, r.stack)
 		}
 		r.stack = r.stack[:len(r.stack)-1]
 		return nil
@@ -71,7 +71,7 @@ func (r *Parser) parseValue() error {
 		r.stack = r.stack[:len(r.stack)-1]
 		return nil
 	default:
-		return fmt.Errorf("expected value but got: %v", cur)
+		return fmt.Errorf("expected value but got: %v ", cur)
 	}
 }
 
@@ -190,6 +190,8 @@ func (r *Parser) parseArray() error {
 	// Move past the left bracket
 	r.curIdx++
 
+	fmt.Println("start processing array")
+
 	r.stack = append(r.stack, LEFT_BRACKET)
 
 	// Check if the array is empty
@@ -205,6 +207,7 @@ func (r *Parser) parseArray() error {
 
 		// Parse the value (this will handle nested arrays)
 		err := r.parseValue()
+		fmt.Println("inside array loop", "cur val", r.tokens[r.curIdx], "next", r.tokens[r.curIdx+1])
 		if err != nil {
 			return err
 		}
@@ -213,14 +216,20 @@ func (r *Parser) parseArray() error {
 
 		r.curIdx++
 
-		if r.curIdx+1 < len(r.tokens)-1 && r.tokens[r.curIdx].TokenType != COMMA {
+		if r.curIdx < len(r.tokens)-1 && r.tokens[r.curIdx].TokenType != COMMA && r.tokens[r.curIdx].TokenType != RIGHT_BRACKET {
 			return fmt.Errorf("expected comma or closing bracket in array, but got %s %v", r.tokens[r.curIdx].Value, r.stack)
 		}
 
-		if r.curIdx+1 < len(r.tokens)-1 && r.tokens[r.curIdx+1].TokenType != RIGHT_BRACKET {
+		if r.curIdx < len(r.tokens)-1 && r.tokens[r.curIdx].TokenType == COMMA && r.curIdx+1 < len(r.tokens)-1 && r.tokens[r.curIdx+1].TokenType == RIGHT_BRACKET {
+			return fmt.Errorf("extra comma %s %v", r.tokens[r.curIdx].Value, r.stack)
+		}
+
+		if r.curIdx+1 < len(r.tokens)-1 && r.tokens[r.curIdx].TokenType != RIGHT_BRACKET {
 			r.curIdx++
 		}
 	}
+
+	fmt.Println("got out of loop array")
 
 	if r.tokens[r.curIdx].TokenType != RIGHT_BRACKET {
 		return fmt.Errorf("error incorrect json structure (right bracket), got %v", r.tokens[r.curIdx])
@@ -230,11 +239,14 @@ func (r *Parser) parseArray() error {
 		return fmt.Errorf("error incorrect json structure unbalanced brackets")
 	}
 
+	fmt.Println("should pop array", r.stack)
+
 	if len(r.stack) > 0 {
 		r.popStack()
 	}
 
 	//fmt.Println("Got out", r.curIdx, r.stack, len(r.stack), r.tokens[r.curIdx])
+	fmt.Println("finish processing array")
 	return nil
 }
 
@@ -265,6 +277,9 @@ func (r *Parser) parseObj() error {
 			return fmt.Errorf("expected comma, but got %v", r.tokens[r.curIdx])
 		}
 
+		if r.tokens[r.curIdx-1].TokenType == COMMA && r.tokens[r.curIdx].TokenType == RIGHT_BRACE {
+			return fmt.Errorf("extra comma")
+		}
 	}
 
 	if r.tokens[r.curIdx].TokenType != RIGHT_BRACE {
@@ -275,6 +290,8 @@ func (r *Parser) parseObj() error {
 		return fmt.Errorf("error incorrect json structure unbalanced braces")
 	}
 
+	fmt.Println("should pop", r.stack)
+
 	if len(r.stack) > 0 {
 		r.popStack()
 	}
@@ -282,7 +299,7 @@ func (r *Parser) parseObj() error {
 	//
 	// { key : { nested: val, nested1: val1 } }
 
-	fmt.Println(r.stack, "went after", r.curIdx, len(r.tokens), "cur value:", r.tokens[r.curIdx].Value)
+	fmt.Println(r.stack, "went after", r.curIdx, len(r.tokens), "cur value:", r.tokens[r.curIdx].Value, "next", r.tokens[r.curIdx+1])
 
 	return nil
 }
