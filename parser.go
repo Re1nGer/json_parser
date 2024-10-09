@@ -56,8 +56,16 @@ func (r *Parser) parseValue() error {
 		return r.parseObj()
 	case LEFT_BRACKET:
 		return r.parseArray()
-	case STRING, TRUE, FALSE, NULL, NUMBER:
+	case STRING:
 		return nil
+	case TRUE:
+		return r.parseTrue()
+	case FALSE:
+		return r.parseFalse()
+	case NULL:
+		return r.parseNull()
+	case NUMBER:
+		return r.parseNumber()
 	case RIGHT_BRACE:
 		if len(r.stack) == 0 || r.stack[len(r.stack)-1] != LEFT_BRACE {
 			return fmt.Errorf("unexpected },  position %d stack %v", r.curIdx, r.stack)
