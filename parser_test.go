@@ -425,6 +425,36 @@ func TestParseObj(t *testing.T) {
 	fmt.Println("stack", p.stack, "tokens", p.tokens)
 }
 
+func TestParseArray(t *testing.T) {
+
+	sample := []byte("[\"elements\", \"elements1\", \"elements2\"]")
+
+	p, _ := NewParser(sample)
+
+	err := p.parseArray()
+	if err != nil {
+		t.Errorf("error %v", err)
+		t.Fail()
+	}
+
+	fmt.Println("stack", p.stack, "tokens", p.tokens)
+}
+
+func TestParseComplexArray(t *testing.T) {
+
+	sample := []byte("[\"elements\", { \"object\": \"val\", \"key\": { \"another\": \"value\" } }]")
+
+	p, _ := NewParser(sample)
+
+	err := p.parseArray()
+	if err != nil {
+		t.Errorf("error %v", err)
+		t.Fail()
+	}
+
+	fmt.Println("stack", p.stack, "tokens", p.tokens)
+}
+
 func TestDeeplyNestedObj(t *testing.T) {
 
 	path := "./main/testpass"
