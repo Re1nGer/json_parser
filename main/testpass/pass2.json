@@ -1,0 +1,75 @@
+{
+  "person": {
+    "name": "John Doe",
+    "address": {
+      "home": {
+        "street": "123 Main St",
+        "city": "Anytown",
+        "country": {
+          "name": "United States",
+          "code": "US",
+          "region": {
+            "name": "North America",
+            "subregion": {
+              "name": "Northern America"
+            }
+          }
+        }
+      },
+      "work": {
+        "company": {
+          "name": "Tech Innovations Inc.",
+          "department": {
+            "name": "Research and Development",
+            "subdepartment": {
+              "name": "Artificial Intelligence",
+              "project": {
+                "name": "Neural Networks",
+                "status": "ongoing",
+                "details": {
+                  "description": "Developing advanced neural network architectures",
+                  "phase": "testing",
+                  "collaborators": {
+                    "internal": {
+                      "team": "AI Core",
+                      "lead": "Jane Smith"
+                    },
+                    "external": {
+      "university": {
+        "name": "Tech University",
+        "department": "Computer Science",
+        "contactPerson": {
+          "name": "Prof. Alan Turing",
+          "email": "a.turing@techuniversity.edu",
+          "office": {
+            "building": "CS Complex",
+            "room": "301A"
+          }
+        }
+      }
+    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "address": {
+          "street": "456 Innovation Ave",
+          "city": "Tech City",
+          "state": "CA"
+        }
+      }
+    },
+    "contact": {
+      "email": {
+        "personal": "john.doe@email.com",
+        "work": "j.doe@techinnovations.com"
+      },
+      "phone": {
+        "home": "555-1234",
+        "mobile": "555-5678"
+      }
+    }
+  }
+}

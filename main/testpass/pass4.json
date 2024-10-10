@@ -1,0 +1,81 @@
+{
+  "library": {
+    "name": "Central City Library",
+    "established": 1954,
+    "address": {
+      "street": "123 Book Lane",
+      "city": "Readville",
+      "state": "Literacy",
+      "zip": "12345"
+    },
+    "contact": {
+      "phone": "555-123-4567",
+      "email": "info@centralcitylibrary.org"
+    },
+    "staff": [
+      {
+        "name": "Alice Johnson",
+        "position": "Head Librarian",
+        "yearsOfService": 15
+      },
+      {
+        "name": "Bob Smith",
+        "position": "Reference Specialist",
+        "yearsOfService": 8
+      }
+    ],
+    "sections": {
+      "fiction": {
+        "capacity": 10000,
+        "popular genres": [
+          "Mystery",
+          "Science Fiction",
+          "Romance"
+        ]
+      },
+      "non-fiction": {
+        "capacity": 15000,
+        "popular subjects": [
+          "History",
+          "Science",
+          "Biography"
+        ]
+      },
+      "children": {
+        "capacity": 5000,
+        "features": [
+          "Interactive displays",
+          "Reading nooks",
+          "Storytelling area"
+        ]
+      }
+    },
+    "catalog": {
+      "total books": 50000,
+      "digital resources": 10000,
+      "periodicals": 500
+    },
+    "services": [
+      "Book loans",
+      "Inter-library loans",
+      "Computer access",
+      "Community events"
+    ],
+    "membership": {
+      "annual fee": 0,
+      "borrowing limit": 10,
+      "duration": "3 weeks"
+    },
+    "opening hours": {
+      "weekdays": "9:00 AM - 8:00 PM",
+      "saturday": "10:00 AM - 6:00 PM",
+      "sunday": "1:00 PM - 5:00 PM"
+    },
+    "annual_budget": 500000.00,
+    "renovation": {
+      "planned": true,
+      "year": 2025,
+      "estimated cost": 1000000
+    }
+  }
+}
