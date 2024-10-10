@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"unicode"
 )
 
 type TokenType int
@@ -23,6 +22,7 @@ const (
 	NUMBER
 	COMMA
 	EOF
+	SPACE
 )
 
 // how can you add row and col
@@ -44,30 +44,22 @@ func NewLexer(rd *bufio.Reader) *Lexer {
 }
 
 // let's just assume it's an array of bytes
+
 func (r *Lexer) Tokenize() ([]Token, error) {
-	var cur byte
-
-	var err error
-
-	rd := r.Reader
-
-	//introduce counter to validate comma positions
-	//wouldn't work in nested structures
-	//stack is neccessary to keep structures validated
-
-	for err == nil {
-		cur, err = rd.ReadByte()
-
+	for {
+		cur, err := r.Reader.ReadByte()
 		if err != nil {
 			if err == io.EOF {
 				r.Tokens = append(r.Tokens, Token{TokenType: EOF})
 				return r.Tokens, nil
 			}
-			fmt.Printf("reading error %v", err)
 			return nil, err
 		}
 
 		switch cur {
+		case ' ', '\n', '\r':
+			// Skip whitespace
+			continue
 		case '{':
 			r.Tokens = append(r.Tokens, Token{TokenType: LEFT_BRACE, Value: "{"})
 		case '}':
@@ -76,81 +68,75 @@ func (r *Lexer) Tokenize() ([]Token, error) {
 			r.Tokens = append(r.Tokens, Token{TokenType: LEFT_BRACKET, Value: "["})
 		case ']':
 			r.Tokens = append(r.Tokens, Token{TokenType: RIGHT_BRACKET, Value: "]"})
+		case ':':
+			r.Tokens = append(r.Tokens, Token{TokenType: COLON, Value: ":"})
+		case ',':
+			r.Tokens = append(r.Tokens, Token{TokenType: COMMA, Value: ","})
+		case '"':
+			r.Reader.UnreadByte()
+			t, err := r.tokenizeString()
+			if err != nil {
+				return nil, err
+			}
+			r.Tokens = append(r.Tokens, *t)
 		case 'f':
-			rd.UnreadByte()
-			t, err := r.tokenizeBool(rd)
+			r.Reader.UnreadByte()
+			t, err := r.tokenizeBool(r.Reader)
 			if err != nil {
 				return nil, err
 			}
 			r.Tokens = append(r.Tokens, *t)
 		case 't':
-			rd.UnreadByte()
-			t, err := r.tokenizeBool(rd)
+			r.Reader.UnreadByte()
+			t, err := r.tokenizeBool(r.Reader)
 			if err != nil {
 				return nil, err
 			}
 			r.Tokens = append(r.Tokens, *t)
 
 		case 'n':
-			rd.UnreadByte()
-			t, err := r.tokenizeNull(rd)
+			r.Reader.UnreadByte()
+			t, err := r.tokenizeNull(r.Reader)
 			if err != nil {
 				return nil, err
 			}
 			r.Tokens = append(r.Tokens, *t)
-		case '"':
-			//handle string
-			t, err := r.tokenizeString(rd)
+		case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+			r.Reader.UnreadByte()
+			t, err := r.tokenizeNumber()
 			if err != nil {
 				return nil, err
 			}
 			r.Tokens = append(r.Tokens, *t)
-		case ':':
-			r.Tokens = append(r.Tokens, Token{TokenType: COLON, Value: ":"})
-		case ',':
-			r.Tokens = append(r.Tokens, Token{TokenType: COMMA, Value: ","})
-		case ' ': //empty space skip
-			continue
-		case '\\':
-			continue
-		case '-':
-			// Handle negative numbers
-			nextByte, err := rd.ReadByte()
+			/* 		case '\\': //escape character, gotta handle it too
+			r.Reader.UnreadByte()
+			t, err := r.handleEscapeCharacters()
 			if err != nil {
 				return nil, err
 			}
-			if unicode.IsDigit(rune(nextByte)) {
-				rd.UnreadByte() // Put back the digit
-				rd.UnreadByte() // Put back the minus sign
-				t, err := r.tokenizeNumber()
-				if err != nil {
-					return nil, err
-				}
-				r.Tokens = append(r.Tokens, *t)
-			} else {
-				return nil, fmt.Errorf("invalid character after minus sign: %c", nextByte)
-			}
+			r.Tokens = append(r.Tokens, *t) */
+		case '\t':
+			return nil, fmt.Errorf("incorrect json structure: tab charater")
 		default:
-			if unicode.IsSpace(rune(cur)) {
-				continue
-			}
-			fmt.Println("Unknown elements", string(cur), cur)
-			if unicode.IsDigit(rune(cur)) {
-				r.Reader.UnreadByte()
-				t, err := r.tokenizeNumber()
-				if err != nil {
-					return nil, err
-				}
-				r.Tokens = append(r.Tokens, *t)
-			} else {
-				//erronous state
-				fmt.Println("error element", cur, string(cur), r.Tokens)
-				return nil, fmt.Errorf("incorrect json structure")
-			}
+			return nil, fmt.Errorf("unexpected character: %c", cur)
 		}
 	}
+}
 
-	return r.Tokens, nil
+// escape character only allowed for ", \, /, b, f, r, t, u
+func (r *Lexer) handleEscapeCharacters() error {
+	_, err := r.Reader.ReadByte()
+	if err != nil {
+		return fmt.Errorf("reading escape character")
+	}
+
+	esc, err := r.Reader.ReadByte()
+
+	if esc == '\\' || esc == '"' || esc == '/' || esc == '\b' || esc == '\f' || esc == '\n' || esc == '\r' || esc == '\t' { // gotta handle u followed by 4 hex digits
+		return nil
+	}
+
+	return fmt.Errorf("invalid escape sequence")
 }
 
 func (r *Lexer) tokenizeBool(rd *bufio.Reader) (*Token, error) {
@@ -188,126 +174,107 @@ func (r *Lexer) tokenizeBool(rd *bufio.Reader) (*Token, error) {
 	return re, nil
 }
 
-func (r *Lexer) tokenizeString(rd *bufio.Reader) (*Token, error) {
+func (r *Lexer) tokenizeString() (*Token, error) {
 
-	//handle "" case
+	rd := r.Reader
+
 	var val []byte
-	var cur_val byte
 
-	n, err := rd.Peek(1)
-
-	if n[0] == '"' {
-		rd.Discard(1)
-		return &Token{TokenType: STRING, Value: ""}, nil
-	}
-
-	cur, err := rd.ReadByte()
+	two, err := r.Reader.Peek(2)
 	if err != nil {
 		return nil, err
 	}
 
-	//fmt.Println("cur value", string(cur))
-
-	if cur == '\\' || cur == '"' {
-		//skip
-		cur, err = rd.ReadByte()
-	} else {
-		val = append(val, cur)
+	if bytes.Equal(two, []byte{'"', '"'}) {
+		rd.Discard(2)
+		val = append(val, '"', '"')
+		return &Token{TokenType: STRING, Value: string(val)}, nil
 	}
 
-	//has to handle \" escape double string case
-	t := &Token{}
+	rd.ReadByte() // Consume opening quote
 
-	for cur_val != '"' && err == nil {
-		next, _ := rd.Peek(1)
-		if cur_val == '\t' || cur_val == '\r' || cur_val == '\b' || cur_val == '\f' || cur_val == '\n' || cur_val == '\u0022' {
-			rd.Discard(1)
-			continue
-		}
-		if cur_val == '\\' && next[0] == '"' {
-			//skip escape string
-			rd.Discard(1)
-		}
-		cur_val, err = rd.ReadByte()
+	for {
+		cur, err := rd.ReadByte()
 		if err != nil {
-			return nil, fmt.Errorf("error while parsing string token %v", err)
+			return nil, fmt.Errorf("error while parsing string token: %v", err)
 		}
 
-		if cur_val != '"' {
-			val = append(val, cur_val)
+		if cur == '"' {
+			break
+		}
+
+		if cur == '\\' {
+			next, err := rd.ReadByte()
+			if err != nil {
+				return nil, fmt.Errorf("error while parsing escape sequence: %v", err)
+			}
+			switch next {
+			case '\\', '/', 'b', 'f', 'n', 'r':
+				val = append(val, '\\', next)
+			case 'u':
+				unicodeSeq := make([]byte, 4)
+				_, err := io.ReadFull(rd, unicodeSeq)
+				if err != nil {
+					return nil, fmt.Errorf("error while parsing unicode sequence: %v", err)
+				}
+				val = append(val, '\\', 'u')
+				val = append(val, unicodeSeq...)
+			default:
+				return nil, fmt.Errorf("invalid escape sequence: \\%c", next)
+			}
+		} else if cur == '\t' {
+			return nil, fmt.Errorf("tab character")
+		} else if cur < 32 || cur > 126 {
+			return nil, fmt.Errorf("non-printable character")
+		} else {
+			val = append(val, cur)
 		}
 	}
 
-	t.TokenType = STRING
-	t.Value = string(val)
-
-	return t, nil
+	return &Token{TokenType: STRING, Value: string(val)}, nil
 }
 
 func (r *Lexer) tokenizeNumber() (*Token, error) {
 	var buf bytes.Buffer
-	isFirstDigit := true
-	hasLeadingZero := false
-	isFloat := false
-	isExponent := false
+	var hasDecimal, hasExponent bool
 
-	for {
-		d, _, err := r.Reader.ReadRune()
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return nil, err
-		}
+	// Read the first character (- or digit)
+	first, _ := r.Reader.ReadByte()
 
-		if unicode.IsDigit(d) {
-			if isFirstDigit {
-				if d == '0' {
-					hasLeadingZero = true
-				}
-				isFirstDigit = false
-			} else if hasLeadingZero && !isFloat && !isExponent {
-				// Check for hexadecimal numbers
-				if buf.Len() == 1 { // We've only seen the leading '0' so far
-					nextChar, _, err := r.Reader.ReadRune()
-					if err == nil {
-						if nextChar == 'x' || nextChar == 'X' {
-							return nil, fmt.Errorf("hexadecimal numbers are not allowed")
-						}
-						r.Reader.UnreadRune() // Put back the character we just read
-					}
-				}
-				return nil, fmt.Errorf("invalid number format: leading zero")
-			}
-			buf.WriteRune(d)
-		} else if d == '-' || d == '+' {
-			if buf.Len() > 0 && !isExponent {
-				r.Reader.UnreadRune()
-				break
-			}
-			buf.WriteRune(d)
-		} else if d == '.' {
-			if isFloat {
-				return nil, fmt.Errorf("invalid number format: multiple decimal points")
-			}
-			isFloat = true
-			buf.WriteRune(d)
-		} else if d == 'e' || d == 'E' {
-			if isExponent {
-				return nil, fmt.Errorf("invalid number format: multiple exponents")
-			}
-			isExponent = true
-			isFloat = true // Treat numbers with exponents as floats
-			buf.WriteRune(d)
-		} else {
-			r.Reader.UnreadRune()
-			break
-		}
+	n, _ := r.Reader.Peek(1)
+
+	if first == '0' && isValidNumberByte(n[0]) {
+		return nil, fmt.Errorf("cannot have leading zeros")
 	}
 
-	// Final check for hex numbers at the end of parsing
-	if hasLeadingZero && buf.Len() > 1 && (buf.Bytes()[1] == 'x' || buf.Bytes()[1] == 'X') {
-		return nil, fmt.Errorf("hexadecimal numbers are not allowed")
+	buf.WriteByte(first)
+
+	for {
+		next, err := r.Reader.ReadByte()
+		if err == io.EOF {
+			break
+		}
+
+		switch {
+		case next >= '0' && next <= '9':
+			buf.WriteByte(next)
+		case next == '.' && !hasDecimal && !hasExponent:
+			hasDecimal = true
+			buf.WriteByte(next)
+		case (next == 'e' || next == 'E') && !hasExponent:
+			hasExponent = true
+			buf.WriteByte(next)
+			// Check for + or - after E
+			expSign, err := r.Reader.ReadByte()
+			if err == nil && (expSign == '+' || expSign == '-') {
+				buf.WriteByte(expSign)
+			} else if err == nil {
+				r.Reader.UnreadByte()
+			}
+		default:
+			r.Reader.UnreadByte()
+			return &Token{TokenType: NUMBER, Value: buf.String()}, nil
+		}
 	}
 
 	return &Token{TokenType: NUMBER, Value: buf.String()}, nil
@@ -326,4 +293,8 @@ func (r *Lexer) tokenizeNull(rd *bufio.Reader) (*Token, error) {
 	rd.Discard(4)
 
 	return &Token{TokenType: NULL, Value: "null"}, nil
+}
+
+func isValidNumberByte(b byte) bool {
+	return b >= '0' && b <= '9'
 }

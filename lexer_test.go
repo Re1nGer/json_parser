@@ -103,6 +103,7 @@ func TestJohn4(t *testing.T) {
 	rd := bufio.NewReader(bytes.NewReader(sample))
 
 	p, err := NewLexer(rd).Tokenize()
+	
 	if err != nil {
 		t.Errorf("error parsing %v", err)
 	}

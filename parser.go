@@ -23,14 +23,17 @@ func (r *Parser) Parse() (bool, error) {
 		if len(r.tokens) < r.curIdx {
 			return false, fmt.Errorf("sequence is never finished")
 		}
+		if len(r.stack) == 0 && r.curIdx+1 < len(r.tokens)-1 && r.tokens[r.curIdx+1].TokenType != EOF {
+			return false, fmt.Errorf("incorrect json structure")
+		}
 		r.curIdx++
+
 	}
 	if len(r.stack) != 0 {
 		return false, fmt.Errorf("braces or brackets are inbalanced")
 	}
 
 	return true, nil
-
 }
 
 func (r *Parser) GetTokens() []string {
@@ -66,23 +69,24 @@ func (r *Parser) parseValue() error {
 		return r.parseNull()
 	case NUMBER:
 		return r.parseNumber()
-	case RIGHT_BRACE:
-		if len(r.stack) == 0 || r.stack[len(r.stack)-1] != LEFT_BRACE {
-			return fmt.Errorf("unexpected },  position %d stack %v", r.curIdx, r.stack)
-		}
-		r.stack = r.stack[:len(r.stack)-1]
-		return nil
-	case RIGHT_BRACKET:
-		if len(r.stack) == 0 || r.stack[len(r.stack)-1] != LEFT_BRACKET {
-			return fmt.Errorf("unexpected ]")
-		}
-		r.stack = r.stack[:len(r.stack)-1]
-		return nil
+		/* 	case RIGHT_BRACE:
+		   		if len(r.stack) == 0 || r.stack[len(r.stack)-1] != LEFT_BRACE {
+		   			return fmt.Errorf("unexpected },  position %d stack %v", r.curIdx, r.stack)
+		   		}
+		   		r.popStack()
+		   		return nil
+		   	case RIGHT_BRACKET:
+		   		if len(r.stack) == 0 || r.stack[len(r.stack)-1] != LEFT_BRACKET {
+		   			return fmt.Errorf("unexpected ]")
+		   		}
+		   		r.popStack()
+		   		return nil */
 	default:
 		return fmt.Errorf("expected value but got: %v ", cur)
 	}
 }
 
+// gotta figure out how to escape random json structure on outer levels
 func NewParser(input []byte) (*Parser, error) {
 
 	lexer := NewLexer(bufio.NewReader(bytes.NewReader(input)))
@@ -92,6 +96,7 @@ func NewParser(input []byte) (*Parser, error) {
 	}
 
 	tokens, err := lexer.Tokenize()
+
 	if err != nil {
 		return nil, fmt.Errorf("unable to tokenize %v", err)
 	}
@@ -161,22 +166,7 @@ func (r *Parser) parseComma() error {
 	if r.curIdx+1 >= len(r.tokens) || r.curIdx-1 < 0 {
 		return fmt.Errorf("incorrect json structure (comma)")
 	}
-	//next := r.tokens[r.curIdx+1].TokenType
-	//cur := r.tokens[r.curIdx]
-	//prev := r.tokens[r.curIdx-1].TokenType
-
-	//in-between cases
-	/* 	a := prev == RIGHT_BRACKET && next == LEFT_BRACKET
-	   	o := prev == RIGHT_BRACE && next == LEFT_BRACE
-
-	   	b := betweenValues(prev, next)
-
-	   	if !a && !o && !b {
-	   		return fmt.Errorf("incorrect json structure (comma)")
-	   	} */
-
 	return nil
-
 }
 
 func betweenValues(l, r TokenType) bool {
@@ -344,21 +334,6 @@ func (r *Parser) parseKeyvalue() error {
 	}
 
 	fmt.Println(r.curIdx, "cur", r.tokens[r.curIdx].Value)
-	//r.curIdx++
-	/* 	if r.curIdx < len(r.tokens)-1 && (r.tokens[r.curIdx].TokenType == COMMA || r.tokens[r.curIdx].TokenType == RIGHT_BRACE) {
-		if r.tokens[r.curIdx].TokenType == COMMA {
-			err := r.parseComma()
-			if err != nil {
-				return err
-			}
-		}
-		if r.tokens[r.curIdx].TokenType == RIGHT_BRACE && r.last() == LEFT_BRACE {
-			r.popStack()
-		}
-		r.curIdx++
-	} */
-
-	//potential recursion in case value in an object
 
 	return nil
 }

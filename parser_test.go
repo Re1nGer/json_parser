@@ -214,6 +214,21 @@ func TestFailMisplacedQuoteValue(t *testing.T) {
 	}
 }
 
+func TestFailRandomStructure(t *testing.T) {
+
+	sample := []byte("{\"Extra value after close\": true} \"misplaced quoted value\"")
+
+	p, err := NewParser(sample)
+
+	_, err = p.Parse()
+
+	fmt.Println("error raised", err, p.tokens)
+
+	if err == nil {
+		t.Errorf("error should have been raised")
+	}
+}
+
 func TestFailIllegalExpression(t *testing.T) {
 	sample := []byte("{\"Illegal expression\":1+2}")
 
@@ -231,10 +246,10 @@ func TestFailIllegalExpression(t *testing.T) {
 func TestFailINumbersCannotHaveLeadingZero(t *testing.T) {
 	sample := []byte("{\"Numbers cannot have leading zeroes\": 013}")
 
-	_, err := NewParser(sample)
+	p, err := NewParser(sample)
 
 	if err == nil {
-		t.Errorf("error should have been raised")
+		t.Errorf("error should have been raised %v", p.tokens)
 	}
 
 	fmt.Println("error raised", err)
@@ -252,34 +267,30 @@ func TestFailNumbersCannotBeHex(t *testing.T) {
 	fmt.Println("error raised", err)
 }
 
-//separate case to handle on lexer level
-/* func TestFailIllegalBackslashEscape(t *testing.T) {
+// separate case to handle on lexer level
+func TestFailIllegalBackslashEscape(t *testing.T) {
 	sample := []byte("[\"Illegal backslash escape: \x15\"]")
 
-	p, err := NewParser(sample)
-
-	_, err = p.Parse()
+	_, err := NewParser(sample)
 
 	if err == nil {
-		t.Errorf("error should have been raised")
+		t.Fail()
 	}
 
 	fmt.Println("error raised", err)
-} */
+}
 
-/* func TestFailIllegalBackslashEscape2(t *testing.T) {
+func TestFailIllegalBackslashEscape2(t *testing.T) {
 	sample := []byte("[\"Illegal backslash escape: \017\"]")
 
 	p, err := NewParser(sample)
-
-	_, err = p.Parse()
 
 	if err == nil {
 		t.Errorf("error should have been raised: %v", p.tokens)
 	}
 
 	fmt.Println("error raised", err)
-} */
+}
 
 func TestFailIlTooDeep(t *testing.T) {
 	sample := []byte("[[[[[[[[[[[[[[[[[[[[\"Not so Too deep\"]]]]]]]]]]]]]]]]]]]]")
@@ -378,18 +389,18 @@ func TestFailSingleQuote(t *testing.T) {
 	fmt.Println("error raised", err)
 }
 
-//weird one shoud investigate
-/* func TestFailTabCharacters(t *testing.T) {
+// weird one shoud investigate
+func TestFailTabCharacters(t *testing.T) {
 	sample := []byte("[\"	tab	character	in	string	\"]")
 
 	_, err := NewParser(sample)
 
 	if err == nil {
-		t.Errorf("error should have been raised")
+		t.Fail()
 	}
 
 	fmt.Println("error raised", err)
-} */
+}
 
 func TestShouldPass(t *testing.T) {
 	sample := []byte("{ \"JSON Test Pattern pass3\": { \"The outermost value\": \"must be an object or array.\", \"In this test\": \"It is an object.\" } } ")
