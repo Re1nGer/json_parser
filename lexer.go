@@ -108,13 +108,6 @@ func (r *Lexer) Tokenize() ([]Token, error) {
 				return nil, err
 			}
 			r.Tokens = append(r.Tokens, *t)
-			/* 		case '\\': //escape character, gotta handle it too
-			r.Reader.UnreadByte()
-			t, err := r.handleEscapeCharacters()
-			if err != nil {
-				return nil, err
-			}
-			r.Tokens = append(r.Tokens, *t) */
 		case '\t':
 			return nil, fmt.Errorf("incorrect json structure: tab charater")
 		default:
@@ -132,7 +125,7 @@ func (r *Lexer) handleEscapeCharacters() error {
 
 	esc, err := r.Reader.ReadByte()
 
-	if esc == '\\' || esc == '"' || esc == '/' || esc == '\b' || esc == '\f' || esc == '\n' || esc == '\r' || esc == '\t' { // gotta handle u followed by 4 hex digits
+	if esc == '\\' || esc == '"' || esc == '/' || esc == '\b' || esc == '\f' || esc == '\n' || esc == '\r' || esc == '\t' {
 		return nil
 	}
 

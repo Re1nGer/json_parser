@@ -69,18 +69,6 @@ func (r *Parser) parseValue() error {
 		return r.parseNull()
 	case NUMBER:
 		return r.parseNumber()
-		/* 	case RIGHT_BRACE:
-		   		if len(r.stack) == 0 || r.stack[len(r.stack)-1] != LEFT_BRACE {
-		   			return fmt.Errorf("unexpected },  position %d stack %v", r.curIdx, r.stack)
-		   		}
-		   		r.popStack()
-		   		return nil
-		   	case RIGHT_BRACKET:
-		   		if len(r.stack) == 0 || r.stack[len(r.stack)-1] != LEFT_BRACKET {
-		   			return fmt.Errorf("unexpected ]")
-		   		}
-		   		r.popStack()
-		   		return nil */
 	default:
 		return fmt.Errorf("expected value but got: %v ", cur)
 	}
@@ -162,33 +150,9 @@ func (r *Parser) parseNull() error {
 	return nil
 }
 
-func (r *Parser) parseComma() error {
-	if r.curIdx+1 >= len(r.tokens) || r.curIdx-1 < 0 {
-		return fmt.Errorf("incorrect json structure (comma)")
-	}
-	return nil
-}
-
-func betweenValues(l, r TokenType) bool {
-	lt := l == TRUE || l == FALSE || l == NULL || l == NUMBER || l == STRING
-
-	rt := r == TRUE || r == FALSE || r == NULL || r == NUMBER || r == STRING
-
-	return lt && rt
-}
-
-// { key : value, key1 : value1, obj : [ { val : arr1 }, { val2: arr2 } ] }
-//
-//
-//
-//
-//
-
 func (r *Parser) parseArray() error {
 	// Move past the left bracket
 	r.curIdx++
-
-	fmt.Println("start processing array")
 
 	r.stack = append(r.stack, LEFT_BRACKET)
 
@@ -205,12 +169,9 @@ func (r *Parser) parseArray() error {
 
 		// Parse the value (this will handle nested arrays)
 		err := r.parseValue()
-		fmt.Println("inside array loop", "cur val", r.tokens[r.curIdx], "next", r.tokens[r.curIdx+1])
 		if err != nil {
 			return err
 		}
-
-		fmt.Println("after", r.curIdx, "curr", r.tokens[r.curIdx])
 
 		r.curIdx++
 
@@ -227,8 +188,6 @@ func (r *Parser) parseArray() error {
 		}
 	}
 
-	fmt.Println("got out of loop array")
-
 	if r.tokens[r.curIdx].TokenType != RIGHT_BRACKET {
 		return fmt.Errorf("error incorrect json structure (right bracket), got %v", r.tokens[r.curIdx])
 	}
@@ -237,14 +196,9 @@ func (r *Parser) parseArray() error {
 		return fmt.Errorf("error incorrect json structure unbalanced brackets")
 	}
 
-	fmt.Println("should pop array", r.stack)
-
 	if len(r.stack) > 0 {
 		r.popStack()
 	}
-
-	//fmt.Println("Got out", r.curIdx, r.stack, len(r.stack), r.tokens[r.curIdx])
-	fmt.Println("finish processing array")
 	return nil
 }
 
@@ -288,22 +242,11 @@ func (r *Parser) parseObj() error {
 		return fmt.Errorf("error incorrect json structure unbalanced braces")
 	}
 
-	fmt.Println("should pop", r.stack)
-
 	if len(r.stack) > 0 {
 		r.popStack()
 	}
 
-	//
-	// { key : { nested: val, nested1: val1 } }
-
-	fmt.Println(r.stack, "went after", r.curIdx, len(r.tokens), "cur value:", r.tokens[r.curIdx].Value, "next", r.tokens[r.curIdx+1])
-
 	return nil
-}
-
-func (r *Parser) isValue(el TokenType) bool {
-	return el == TRUE || el == FALSE || el == NULL || el == NUMBER || el == STRING
 }
 
 func (r *Parser) parseKeyvalue() error {
@@ -333,17 +276,13 @@ func (r *Parser) parseKeyvalue() error {
 		r.curIdx++
 	}
 
-	fmt.Println(r.curIdx, "cur", r.tokens[r.curIdx].Value)
-
 	return nil
 }
 
 func (r *Parser) popStack() {
-	fmt.Print("before pop", r.stack)
 	if len(r.stack) > 0 {
 		r.stack = r.stack[:len(r.stack)-1]
 	}
-	fmt.Print("after pop", r.stack)
 }
 
 func (r *Parser) last() TokenType {
